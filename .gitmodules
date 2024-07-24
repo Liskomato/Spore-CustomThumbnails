@@ -1,0 +1,4 @@
+[submodule "Spore-ModAPI"]
+	path = Spore-ModAPI
+	url = https://github.com/Tenderi4/Spore-ModAPI.git
+	branch = scenariodata-thumbnailpointers
