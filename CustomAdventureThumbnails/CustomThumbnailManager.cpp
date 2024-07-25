@@ -60,11 +60,11 @@ void CustomThumbnailManager::ParseLine(const ArgScript::Line& line)
 
 	if (check) {
 		string16 str = (char16_t*)openedFile.lpstrFile;
-		string16 dest = u"Thumbnails\\0x0!";
+		string16 dest = u"Thumbnails\\";
 		uint32_t hash = id(str.substr(str.find_last_of(u"\\/") + 1).c_str());
 		string16 hashString;
-		hashString.assign_convert(hash);
-		dest = Resource::Paths::GetDirFromID(Resource::PathID::Creations) + dest + hashString + str.substr(str.find_last_of(u"."));
+		hashString.append_sprintf(u"%#10x!%#10x.%ls",0,hash, str.substr(str.find_last_of(u".") + 1).c_str());
+		dest = Resource::Paths::GetDirFromID(Resource::PathID::Creations) + dest + hashString;
 		if (!std::filesystem::copy_file(str.c_str(), dest.c_str())) {
 			App::ConsolePrintF("Failed to copy file to folder.");
 			return;
