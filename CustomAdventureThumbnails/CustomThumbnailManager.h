@@ -11,6 +11,7 @@ public:
 
 	string16 directoryPath;
 	DatabaseDirectoryFilesPtr directoryCache;
+	DatabasePackedFilePtr dbCache;
 
 	// Called when the cheat is invoked
 	void ParseLine(const ArgScript::Line& line) override;

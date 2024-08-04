@@ -8,8 +8,15 @@
 
 CustomThumbnailManager::CustomThumbnailManager()
 {
-	Resource::Paths::CreateSaveAreaDirectoryDatabase(Resource::PathID::Creations,u"Thumbnails",directoryCache,static_cast<Resource::SaveAreaID>(id(u"CustomAdventureThumbnails")));
-	directoryCache->AddExtensionMapping(u"png", TypeIDs::png);
+	//Resource::Paths::CreateSaveAreaDirectoryDatabase(Resource::PathID::Creations,u"Thumbnails",directoryCache,static_cast<Resource::SaveAreaID>(id(u"CustomAdventureThumbnails")));
+	//directoryCache->AddExtensionMapping(u"png", TypeIDs::png);
+
+	directoryPath = u"CustomThumbnailsCache.package";
+	directoryPath = Resource::Paths::GetDirFromID(Resource::PathID::AppData) + directoryPath;
+
+	dbCache = new Resource::DatabasePackedFile(directoryPath.c_str());
+
+	ResourceManager.RegisterDatabase(true, dbCache.get());
 }
 
 
@@ -59,17 +66,42 @@ void CustomThumbnailManager::ParseLine(const ArgScript::Line& line)
 	bool check = GetOpenFileNameW(&openedFile);
 
 	if (check) {
-		string16 str = (char16_t*)openedFile.lpstrFile;
-		string16 dest = u"Thumbnails\\";
-		uint32_t hash = id(str.substr(str.find_last_of(u"\\/") + 1).c_str());
-		string16 hashString;
-		hashString.append_sprintf(u"%#10x!%#10x.%ls",0,hash, str.substr(str.find_last_of(u".") + 1).c_str());
-		dest = Resource::Paths::GetDirFromID(Resource::PathID::Creations) + dest + hashString;
-		if (!std::filesystem::copy_file(str.c_str(), dest.c_str())) {
-			App::ConsolePrintF("Failed to copy file to folder.");
-			return;
+		char16_t* str = (char16_t*)openedFile.lpstrFile;
+
+		FileStreamPtr stream = new IO::FileStream((char16_t*)openedFile.lpstrFile);
+
+		ResourceKey fileKey = ResourceManager.GetKeyFromName(str);
+		Resource::PFRecordWrite* pfData = nullptr;
+
+		if (stream->Open(IO::AccessFlags::Read, IO::CD::OpenExisting)) {
+			char* data;
+			stream->Read(&data,stream->GetSize());
+			stream->Close();
+
+			if (dbCache->Open(IO::AccessFlags::ReadWrite,IO::CD::CreateAlways)) {
+
+				pfData = dbCache->CreateRecordWriteData(IO::AccessFlags::ReadWrite, data, stream->GetSize(), fileKey);
+				dbCache->Close();
+			}
 		}
-		TexturePtr texture = TextureManager.GetTexture(ResourceKey(hash,TypeIDs::png,0x0));
+
+		//uint32_t hash = id(str.substr(str.find_last_of(u"\\/") + 1).c_str());
+		//ResourceKey fileKey = ResourceKey(hash, TypeIDs::png, 0x0);
+		//string16 dest = u"Thumbnails\\";
+		//
+		//string16 hashString;
+		//hashString.append_sprintf(u"0x0!%#10x.%ls",hash, str.substr(str.find_last_of(u".") + 1).c_str());
+		//dest = Resource::Paths::GetDirFromID(Resource::PathID::Creations) + dest + hashString;
+		//
+		//if (std::filesystem::exists(dest.c_str())) {
+		//	SporeDebugPrint("File already exists, using existing version instead.");
+		//}
+		//else if (!std::filesystem::copy_file(str.c_str(), dest.c_str())) {
+		//	App::ConsolePrintF("Failed to copy file to folder.");
+		//	return;
+		//}
+
+		TexturePtr texture = TextureManager.GetTexture(fileKey, Graphics::TextureFlags::kTextureFlagForceLoad);
 		if (texture != nullptr) {
 			
 			ScenarioMode.GetData()->StartHistoryEntry();
