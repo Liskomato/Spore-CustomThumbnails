@@ -5,6 +5,7 @@
 #include <commdlg.h>
 #include <wininet.h>
 #include <filesystem>
+#include <d3d9helper.h>
 
 CustomThumbnailManager::CustomThumbnailManager()
 {
@@ -66,33 +67,54 @@ void CustomThumbnailManager::ParseLine(const ArgScript::Line& line)
 	bool check = GetOpenFileNameW(&openedFile);
 
 	if (check) {
-		char16_t* str = (char16_t*)openedFile.lpstrFile;
+		TexturePtr texture;
+
+		string16 str = (char16_t*)openedFile.lpstrFile;
 
 		FileStreamPtr stream = new IO::FileStream((char16_t*)openedFile.lpstrFile);
 
-		ResourceKey fileKey = ResourceManager.GetKeyFromName(str);
-		Resource::PFRecordWrite* pfData = nullptr;
+		uint32_t hash = id(str.substr(str.find_last_of(u"\\/") + 1).c_str());
+		ResourceKey fileKey = ResourceKey(hash, TypeIDs::png, 0);
+		
 
 		if (stream->Open(IO::AccessFlags::Read, IO::CD::OpenExisting)) {
-			char* data;
-			stream->Read(&data,stream->GetSize());
-			stream->Close();
+			char* data = new char[stream->GetSize()];
+			stream->Read(data,stream->GetSize());
+			
+			Resource::IRecord* pfData;
+			
+			if (dbCache->Open(IO::AccessFlags::ReadWrite,IO::CD::OpenAlways) && dbCache->OpenRecord(fileKey,&pfData, IO::AccessFlags::ReadWrite, IO::CD::CreateAlways)) {
 
-			if (dbCache->Open(IO::AccessFlags::ReadWrite,IO::CD::CreateAlways)) {
+				if (pfData->GetStream()->Write(data,stream->GetSize())) {
+					
+					ModAPI::Log("CustomAdventureThumbnails: PNG file %ls written successfully to %ls",str.c_str(),directoryPath.c_str());
+				}
+				else {
+					SporeDebugPrint("Failed to write record.");
+				}
 
-				pfData = dbCache->CreateRecordWriteData(IO::AccessFlags::ReadWrite, data, stream->GetSize(), fileKey);
+				dbCache->CloseRecord(pfData);
 				dbCache->Close();
+				
+				
 			}
+			else {
+				SporeDebugPrint("Failed to open record.");
+			}
+
+			stream->Close();
+			delete[] data;
+
 		}
 
-		//uint32_t hash = id(str.substr(str.find_last_of(u"\\/") + 1).c_str());
-		//ResourceKey fileKey = ResourceKey(hash, TypeIDs::png, 0x0);
 		//string16 dest = u"Thumbnails\\";
 		//
 		//string16 hashString;
-		//hashString.append_sprintf(u"0x0!%#10x.%ls",hash, str.substr(str.find_last_of(u".") + 1).c_str());
+		//hashString.append_sprintf(u"%#10x!%#10x.%#10x",0, hash, TypeIDs::png);
 		//dest = Resource::Paths::GetDirFromID(Resource::PathID::Creations) + dest + hashString;
 		//
+		//
+
 		//if (std::filesystem::exists(dest.c_str())) {
 		//	SporeDebugPrint("File already exists, using existing version instead.");
 		//}
@@ -101,7 +123,20 @@ void CustomThumbnailManager::ParseLine(const ArgScript::Line& line)
 		//	return;
 		//}
 
-		TexturePtr texture = TextureManager.GetTexture(fileKey, Graphics::TextureFlags::kTextureFlagForceLoad);
+		ResourceObjectPtr res;
+		IResourceFactoryPtr factory = ResourceManager.FindFactory(TypeIDs::png, TypeIDs::raster);
+
+		if (dbCache->Open(IO::AccessFlags::Read,IO::CD::OpenAlways) && ResourceManager.GetResource(fileKey, &res, nullptr, dbCache.get(), factory.get())) {
+			
+			SporeDebugPrint("Resource found.");
+			auto raster = object_cast<Graphics::cRwRasterDirectResource>(res);
+
+			texture = TextureManager.AddRaster(hash,0,raster->GetData(), Graphics::TextureFlags::kTextureFlagForceLoad);
+			dbCache->Close();
+
+		}
+
+		//texture = TextureManager.GetTexture(fileKey, Graphics::TextureFlags::kTextureFlagForceLoad);
 		if (texture != nullptr) {
 			
 			ScenarioMode.GetData()->StartHistoryEntry();
