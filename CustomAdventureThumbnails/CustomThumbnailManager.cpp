@@ -92,19 +92,8 @@ void CustomThumbnailManager::ParseLine(const ArgScript::Line& line)
 				else {
 					SporeDebugPrint("Failed to write record.");
 				}
-
-				ResourceObjectPtr res;
-				IResourceFactoryPtr factory = ResourceManager.FindFactory(TypeIDs::png, TypeIDs::raster);
-
-				if (factory->CreateResource(pfData, res, nullptr, TypeIDs::png)) {
-					auto raster = object_cast<Graphics::cRwRasterDirectResource>(res);
-
-					texture = TextureManager.AddRaster(hash,0,raster->GetData(), Graphics::TextureFlags::kTextureFlagForceLoad);
-				}
-
-
 				dbCache->CloseRecord(pfData);
-				dbCache->Close();
+				
 				
 				
 			}
@@ -141,11 +130,11 @@ void CustomThumbnailManager::ParseLine(const ArgScript::Line& line)
 		//	auto raster = object_cast<Graphics::cRwRasterDirectResource>(res);
 
 		//	texture = TextureManager.AddRaster(hash,0,raster->GetData(), Graphics::TextureFlags::kTextureFlagForceLoad);
-		//	dbCache->Close();
+		//	
 
 		//}
 
-		//texture = TextureManager.GetTexture(fileKey, Graphics::TextureFlags::kTextureFlagForceLoad);
+		texture = TextureManager.GetTexture(fileKey, Graphics::TextureFlags::kTextureFlagForceLoad);
 		if (texture != nullptr) {
 			
 			ScenarioMode.GetData()->StartHistoryEntry();
