@@ -93,6 +93,16 @@ void CustomThumbnailManager::ParseLine(const ArgScript::Line& line)
 					SporeDebugPrint("Failed to write record.");
 				}
 
+				ResourceObjectPtr res;
+				IResourceFactoryPtr factory = ResourceManager.FindFactory(TypeIDs::png, TypeIDs::raster);
+
+				if (factory->CreateResource(pfData, res, nullptr, TypeIDs::png)) {
+					auto raster = object_cast<Graphics::cRwRasterDirectResource>(res);
+
+					texture = TextureManager.AddRaster(hash,0,raster->GetData(), Graphics::TextureFlags::kTextureFlagForceLoad);
+				}
+
+
 				dbCache->CloseRecord(pfData);
 				dbCache->Close();
 				
@@ -123,18 +133,17 @@ void CustomThumbnailManager::ParseLine(const ArgScript::Line& line)
 		//	return;
 		//}
 
-		ResourceObjectPtr res;
-		IResourceFactoryPtr factory = ResourceManager.FindFactory(TypeIDs::png, TypeIDs::raster);
 
-		if (dbCache->Open(IO::AccessFlags::Read,IO::CD::OpenAlways) && ResourceManager.GetResource(fileKey, &res, nullptr, dbCache.get(), factory.get())) {
-			
-			SporeDebugPrint("Resource found.");
-			auto raster = object_cast<Graphics::cRwRasterDirectResource>(res);
 
-			texture = TextureManager.AddRaster(hash,0,raster->GetData(), Graphics::TextureFlags::kTextureFlagForceLoad);
-			dbCache->Close();
+		//if (dbCache->Open(IO::AccessFlags::Read,IO::CD::OpenAlways) && ResourceManager.GetResource(fileKey, &res, nullptr, dbCache.get(), factory.get())) {
+		//	
+		//	SporeDebugPrint("Resource found.");
+		//	auto raster = object_cast<Graphics::cRwRasterDirectResource>(res);
 
-		}
+		//	texture = TextureManager.AddRaster(hash,0,raster->GetData(), Graphics::TextureFlags::kTextureFlagForceLoad);
+		//	dbCache->Close();
+
+		//}
 
 		//texture = TextureManager.GetTexture(fileKey, Graphics::TextureFlags::kTextureFlagForceLoad);
 		if (texture != nullptr) {
